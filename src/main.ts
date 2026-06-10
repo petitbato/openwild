@@ -86,12 +86,12 @@ async function boot() {
       const fovBoost = player.state === 'gliding' ? 12 : player.sprinting ? 6 : 0;
       cam.update(dt, input.actions.look, player.position, fovBoost);
     },
-    () => {
+    (_alpha, frameDt) => {
       avatar.position.copy(player.position);
       avatar.position.y -= Player.HALF_HEIGHT + Player.RADIUS; // body center -> feet
       // nose points -z at yaw 0, so face along `facing` with atan2 of the negated vector
       const targetYaw = Math.atan2(-player.facing.x, -player.facing.z);
-      avatar.rotation.y += shortestAngle(targetYaw - avatar.rotation.y) * 0.25;
+      avatar.rotation.y += shortestAngle(targetYaw - avatar.rotation.y) * (1 - Math.pow(0.75, frameDt * 60));
       renderer.render(scene, camera);
     },
   );

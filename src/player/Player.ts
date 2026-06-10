@@ -73,7 +73,6 @@ export class Player {
     this.speed = this.moveDir.length() * targetSpeed;
 
     this.velocityY += GRAVITY * dt;
-    if (grounded && this.velocityY < -2) this.velocityY = -2;
     if (grounded && actions.jumpPressed) {
       this.velocityY = JUMP_VELOCITY;
       this.state = 'airborne';
@@ -94,7 +93,8 @@ export class Player {
     this.body.setNextKinematicTranslation({ x: t.x + m.x, y: t.y + m.y, z: t.z + m.z });
 
     if (this.controller.computedGrounded()) {
-      if (this.state === 'airborne' || this.state === 'gliding') this.state = 'grounded';
+      // velocityY > 0 means a jump just launched — don't let ground snap cancel it
+      if ((this.state === 'airborne' && this.velocityY <= 0) || this.state === 'gliding') this.state = 'grounded';
       if (this.state === 'grounded') {
         if (this.velocityY < -2) this.velocityY = -2;
         this.lastGroundedPos.set(t.x, t.y, t.z);
