@@ -49,6 +49,8 @@ export class Player {
   }
 
   update(dt: number, actions: Actions, cameraYaw: number): void {
+    const p = this.body.translation();
+    this.position.set(p.x, p.y, p.z);
     this.climbCooldown = Math.max(0, this.climbCooldown - dt);
 
     switch (this.state) {
@@ -62,8 +64,6 @@ export class Player {
       case 'gliding':  // implemented in Task 10
         break;
     }
-    const p = this.body.translation();
-    this.position.set(p.x, p.y, p.z);
   }
 
   protected computeMoveDir(actions: Actions, cameraYaw: number): void {
