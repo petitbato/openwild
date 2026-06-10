@@ -126,6 +126,8 @@ export class Player {
     this.body.setNextKinematicTranslation({ x: pos.x, y: pos.y, z: pos.z });
     this.velocityY = 0;
     this.state = 'airborne';
+    this.climbLeap = 0;
+    this.climbCooldown = 0.35;
   }
 
   private tryEnterClimb(): boolean {
@@ -133,12 +135,12 @@ export class Player {
     const dir = this.moveDir.clone().normalize();
     const origin = { x: this.position.x, y: this.position.y + 0.3, z: this.position.z };
     const hit = this.physics.raycast(origin, { x: dir.x, y: 0, z: dir.z }, 0.9, this.collider);
-    if (!hit || hit.normal.y > 0.64) return false; // not steep enough (cos 50°)
+    if (!hit || Math.abs(hit.normal.y) > 0.64) return false; // not steep enough (cos 50°), or overhang
     this.wallNormal.set(hit.normal.x, hit.normal.y, hit.normal.z);
     // snap to the wall immediately so the re-stick ray in updateClimb is in range
     this.body.setNextKinematicTranslation({
       x: hit.point.x + this.wallNormal.x * (Player.RADIUS + 0.15),
-      y: this.position.y,
+      y: this.position.y + this.wallNormal.y * (Player.RADIUS + 0.15),
       z: hit.point.z + this.wallNormal.z * (Player.RADIUS + 0.15),
     });
     this.state = 'climbing';
@@ -168,7 +170,9 @@ export class Player {
 
     // wall tangent basis
     const up = new THREE.Vector3(0, 1, 0);
-    const right = up.clone().cross(this.wallNormal).normalize();
+    const right = up.clone().cross(this.wallNormal);
+    if (right.lengthSq() < 1e-6) { this.exitClimb(); return; } // wall turned into floor/ceiling
+    right.normalize();
     const wallUp = this.wallNormal.clone().cross(right).normalize();
 
     if (actions.move.y > 0.1 && this.tryVault()) return;
@@ -214,6 +218,7 @@ export class Player {
     this.state = 'grounded';
     this.velocityY = 0;
     this.lastGroundedPos.set(overOrigin.x, standY, overOrigin.z);
+    this.climbCooldown = 0.2; // brief no-regrab window after topping out
     return true;
   }
 }
