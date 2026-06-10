@@ -3,13 +3,13 @@ import * as THREE from 'three';
 import { GameLoop } from './core/GameLoop';
 import { generateTerrain } from './world/terrain/heightmap';
 import { buildTerrainMesh } from './world/terrain/TerrainMesh';
-import { toonMaterial } from './core/toon';
 import { Physics, RAPIER } from './physics/Physics';
 import { Input } from './core/Input';
 import { Player } from './player/Player';
 import { ThirdPersonCamera } from './camera/ThirdPersonCamera';
 import { StaminaWheel } from './ui/StaminaWheel';
 import { WindStreaks } from './fx/WindStreaks';
+import { CharacterAvatar } from './player/CharacterAvatar';
 import type { TerrainData } from './world/terrain/heightmap';
 
 function findSpawn(terrain: TerrainData): THREE.Vector3 {
@@ -70,18 +70,11 @@ async function boot() {
   const windStreaks = new WindStreaks();
   scene.add(windStreaks.group);
 
-  const avatar = new THREE.Group();
-  const capsuleMesh = new THREE.Mesh(
-    new THREE.CapsuleGeometry(Player.RADIUS, Player.HALF_HEIGHT * 2, 4, 12),
-    toonMaterial(0x3aa0c9),
-  );
-  capsuleMesh.castShadow = true;
-  capsuleMesh.position.y = Player.HALF_HEIGHT + Player.RADIUS;
-  avatar.add(capsuleMesh);
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 8), toonMaterial(0xffc107));
-  nose.rotation.x = Math.PI / 2;
-  nose.position.set(0, 1.4, -0.4);
-  avatar.add(nose); // facing indicator
+  const fill = document.getElementById('loading-fill') as HTMLDivElement;
+  const avatarModel = await CharacterAvatar.load('/assets/character.glb', (f) => {
+    fill.style.width = `${Math.round(f * 100)}%`;
+  });
+  const avatar = avatarModel.group;
   scene.add(avatar);
 
   const loop = new GameLoop(
@@ -100,6 +93,7 @@ async function boot() {
       // nose points -z at yaw 0, so face along `facing` with atan2 of the negated vector
       const targetYaw = Math.atan2(-player.facing.x, -player.facing.z);
       avatar.rotation.y += shortestAngle(targetYaw - avatar.rotation.y) * (1 - Math.pow(0.75, frameDt * 60));
+      avatarModel.update(frameDt, player);
       renderer.render(scene, camera);
     },
   );
