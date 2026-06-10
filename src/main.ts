@@ -89,12 +89,15 @@ async function boot() {
     () => {
       avatar.position.copy(player.position);
       avatar.position.y -= Player.HALF_HEIGHT + Player.RADIUS; // body center -> feet
-      const targetYaw = Math.atan2(player.facing.x, player.facing.z);
+      // nose points -z at yaw 0, so face along `facing` with atan2 of the negated vector
+      const targetYaw = Math.atan2(-player.facing.x, -player.facing.z);
       avatar.rotation.y += shortestAngle(targetYaw - avatar.rotation.y) * 0.25;
       renderer.render(scene, camera);
     },
   );
   loop.start();
+
+  (window as unknown as Record<string, unknown>).__debug = { player, input, cam };
 
   document.getElementById('loading')!.classList.add('done');
 }
