@@ -1,7 +1,8 @@
 import './style.css';
 import * as THREE from 'three';
 import { GameLoop } from './core/GameLoop';
-import { toonMaterial } from './core/toon';
+import { generateTerrain } from './world/terrain/heightmap';
+import { buildTerrainMesh } from './world/terrain/TerrainMesh';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -24,8 +25,13 @@ sun.castShadow = true;
 scene.add(sun);
 scene.add(new THREE.AmbientLight(0xbcd8ff, 0.9));
 
-const cube = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), toonMaterial(0x4caf50));
-scene.add(cube);
+const terrain = generateTerrain(1337);
+const terrainMesh = buildTerrainMesh(terrain);
+scene.add(terrainMesh);
+
+// temporary fly-over view of the island
+camera.position.set(0, 350, 620);
+camera.lookAt(0, 0, 0);
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -33,8 +39,13 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+let orbit = 0;
 const loop = new GameLoop(
-  (dt) => { cube.rotation.y += dt; cube.rotation.x += dt * 0.4; },
+  (dt) => {
+    orbit += dt * 0.05;
+    camera.position.set(Math.sin(orbit) * 620, 350, Math.cos(orbit) * 620);
+    camera.lookAt(0, 0, 0);
+  },
   () => renderer.render(scene, camera),
 );
 loop.start();
