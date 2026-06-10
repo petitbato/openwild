@@ -28,6 +28,10 @@ export class Player {
   protected controller: RAPIER.KinematicCharacterController;
   protected moveDir = new THREE.Vector3();
 
+  private wallNormal = new THREE.Vector3();
+  private climbLeap = 0;       // seconds of climb-jump boost remaining
+  private climbCooldown = 0;   // prevents instant re-grab after letting go
+
   constructor(protected physics: Physics, spawn: THREE.Vector3) {
     this.body = physics.world.createRigidBody(
       RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(spawn.x, spawn.y, spawn.z),
@@ -45,12 +49,16 @@ export class Player {
   }
 
   update(dt: number, actions: Actions, cameraYaw: number): void {
+    this.climbCooldown = Math.max(0, this.climbCooldown - dt);
+
     switch (this.state) {
       case 'grounded':
       case 'airborne':
         this.updateGroundAir(dt, actions, cameraYaw);
         break;
-      case 'climbing': // implemented in Task 9
+      case 'climbing':
+        this.updateClimb(dt, actions);
+        break;
       case 'gliding':  // implemented in Task 10
         break;
     }
@@ -69,6 +77,8 @@ export class Player {
   private updateGroundAir(dt: number, actions: Actions, cameraYaw: number): void {
     const grounded = this.state === 'grounded';
     this.computeMoveDir(actions, cameraYaw);
+
+    if (this.moveDir.lengthSq() > 0.09 && this.tryEnterClimb()) return;
 
     this.sprinting =
       actions.sprintHeld && grounded && this.moveDir.lengthSq() > 0.01 && this.stamina.canUse;
@@ -116,5 +126,88 @@ export class Player {
     this.body.setNextKinematicTranslation({ x: pos.x, y: pos.y, z: pos.z });
     this.velocityY = 0;
     this.state = 'airborne';
+  }
+
+  private tryEnterClimb(): boolean {
+    if (this.climbCooldown > 0 || !this.stamina.canUse) return false;
+    const dir = this.moveDir.clone().normalize();
+    const origin = { x: this.position.x, y: this.position.y + 0.3, z: this.position.z };
+    const hit = this.physics.raycast(origin, { x: dir.x, y: 0, z: dir.z }, 0.9, this.collider);
+    if (!hit || hit.normal.y > 0.64) return false; // not steep enough (cos 50°)
+    this.wallNormal.set(hit.normal.x, hit.normal.y, hit.normal.z);
+    this.state = 'climbing';
+    this.velocityY = 0;
+    this.climbLeap = 0;
+    return true;
+  }
+
+  private updateClimb(dt: number, actions: Actions): void {
+    // re-stick to the wall
+    let inward = this.wallNormal.clone().multiplyScalar(-1);
+    const origin = this.position.clone().addScaledVector(this.wallNormal, 0.5);
+    const hit = this.physics.raycast(origin, inward, 1.2, this.collider);
+    if (!hit) { this.tryVault(); return; }
+    this.wallNormal.set(hit.normal.x, hit.normal.y, hit.normal.z);
+    inward = this.wallNormal.clone().multiplyScalar(-1);
+
+    this.stamina.drain(8 * dt);
+    if (!this.stamina.canUse) { this.exitClimb(); return; }
+
+    if (actions.jumpPressed) {
+      if (actions.move.y < -0.3) { this.exitClimb(); this.velocityY = 2; return; } // let go
+      this.stamina.drain(12);
+      this.climbLeap = 0.3;
+    }
+    this.climbLeap = Math.max(0, this.climbLeap - dt);
+
+    // wall tangent basis
+    const up = new THREE.Vector3(0, 1, 0);
+    const right = up.clone().cross(this.wallNormal).normalize();
+    const wallUp = this.wallNormal.clone().cross(right).normalize();
+
+    if (actions.move.y > 0.1 && this.tryVault()) return;
+
+    const speed = 2.2;
+    const boost = this.climbLeap > 0 ? 4 : 1;
+    const vel = right.clone().multiplyScalar(-actions.move.x * speed)
+      .addScaledVector(wallUp, actions.move.y * speed * boost);
+
+    const target = new THREE.Vector3(hit.point.x, hit.point.y, hit.point.z)
+      .addScaledVector(this.wallNormal, Player.RADIUS + 0.15)
+      .addScaledVector(vel, dt);
+    this.body.setNextKinematicTranslation({ x: target.x, y: target.y, z: target.z });
+
+    const face = inward.clone();
+    face.y = 0;
+    if (face.lengthSq() > 0.001) this.facing.copy(face.normalize());
+    this.speed = vel.length(); // drives climb animation speed later
+  }
+
+  private exitClimb(): void {
+    this.state = 'airborne';
+    this.climbCooldown = 0.35;
+  }
+
+  /** Returns true if it handled a state change (vault to top, or fall). */
+  private tryVault(): boolean {
+    const inward = this.wallNormal.clone().multiplyScalar(-1);
+    // still a steep wall at head height? then no ledge yet
+    const headOrigin = this.position.clone().addScaledVector(this.wallNormal, 0.5);
+    headOrigin.y += 1.1;
+    const wallAtHead = this.physics.raycast(headOrigin, inward, 1.3, this.collider);
+    if (wallAtHead && wallAtHead.normal.y < 0.64) return false;
+
+    // find the surface on top of the ledge
+    const overOrigin = this.position.clone().addScaledVector(inward, Player.RADIUS + 0.55);
+    overOrigin.y += 1.7;
+    const down = this.physics.raycast(overOrigin, { x: 0, y: -1, z: 0 }, 2.6, this.collider);
+    if (!down) { this.exitClimb(); return true; } // wall ended with nothing on top
+
+    const standY = down.point.y + Player.HALF_HEIGHT + Player.RADIUS + 0.05;
+    this.body.setNextKinematicTranslation({ x: overOrigin.x, y: standY, z: overOrigin.z });
+    this.state = 'grounded';
+    this.velocityY = 0;
+    this.lastGroundedPos.set(overOrigin.x, standY, overOrigin.z);
+    return true;
   }
 }
