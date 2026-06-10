@@ -37,7 +37,9 @@ export class Physics {
       indices = new Uint32Array(src.length / 3);
       for (let i = 0; i < indices.length; i++) indices[i] = i;
     }
-    return this.world.createCollider(RAPIER.ColliderDesc.trimesh(vertices, indices));
+    return this.world.createCollider(
+      RAPIER.ColliderDesc.trimesh(vertices, indices, RAPIER.TriMeshFlags.FIX_INTERNAL_EDGES),
+    );
   }
 
   /** Raycast helper. Returns hit point + normal or null. */
