@@ -23,6 +23,12 @@ export class Player {
   sprinting = false;
   readonly stamina = new Stamina();
 
+  get worldVelocity(): THREE.Vector3 {
+    return this.state === 'gliding'
+      ? this.glideVel.clone().setY(this.velocityY)
+      : this.facing.clone().multiplyScalar(this.speed).setY(this.velocityY);
+  }
+
   readonly body: RAPIER.RigidBody;
   readonly collider: RAPIER.Collider;
   protected controller: RAPIER.KinematicCharacterController;
@@ -31,6 +37,7 @@ export class Player {
   private wallNormal = new THREE.Vector3();
   private climbLeap = 0;       // seconds of climb-jump boost remaining
   private climbCooldown = 0;   // prevents instant re-grab after letting go
+  private glideVel = new THREE.Vector3();
 
   constructor(protected physics: Physics, spawn: THREE.Vector3) {
     this.body = physics.world.createRigidBody(
@@ -61,7 +68,8 @@ export class Player {
       case 'climbing':
         this.updateClimb(dt, actions);
         break;
-      case 'gliding':  // implemented in Task 10
+      case 'gliding':
+        this.updateGlide(dt, actions, cameraYaw);
         break;
     }
   }
@@ -94,11 +102,40 @@ export class Player {
       this.state = 'airborne';
     }
 
+    if (!grounded && actions.jumpPressed && this.stamina.canUse && this.velocityY < 2) {
+      this.state = 'gliding';
+      this.glideVel.set(this.moveDir.x, 0, this.moveDir.z).multiplyScalar(this.speed);
+      return;
+    }
+
     this.applyKinematicMove(
       this.moveDir.x * targetSpeed * dt,
       this.velocityY * dt,
       this.moveDir.z * targetSpeed * dt,
     );
+  }
+
+  private updateGlide(dt: number, actions: Actions, cameraYaw: number): void {
+    this.computeMoveDir(actions, cameraYaw);
+    this.stamina.drain(4 * dt);
+
+    // exit: press jump again, run out of stamina, or touch ground
+    if (actions.jumpPressed || !this.stamina.canUse) { this.state = 'airborne'; return; }
+
+    // slow fall
+    this.velocityY += GRAVITY * dt * 0.25;
+    this.velocityY = Math.max(this.velocityY, -2.5);
+
+    // steer toward input at glide speed
+    const targetVel = this.moveDir.clone().multiplyScalar(9);
+    this.glideVel.lerp(targetVel, Math.min(1, dt * 1.5));
+    this.speed = this.glideVel.length();
+    if (this.glideVel.lengthSq() > 0.01) {
+      this.facing.copy(this.glideVel.clone().setY(0).normalize());
+    }
+
+    this.applyKinematicMove(this.glideVel.x * dt, this.velocityY * dt, this.glideVel.z * dt);
+    if (this.state === 'grounded') this.velocityY = -2; // landed
   }
 
   /** Runs the Rapier KCC and updates grounded state + respawn anchor. */

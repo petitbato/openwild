@@ -4,11 +4,12 @@ import { GameLoop } from './core/GameLoop';
 import { generateTerrain } from './world/terrain/heightmap';
 import { buildTerrainMesh } from './world/terrain/TerrainMesh';
 import { toonMaterial } from './core/toon';
-import { Physics } from './physics/Physics';
+import { Physics, RAPIER } from './physics/Physics';
 import { Input } from './core/Input';
 import { Player } from './player/Player';
 import { ThirdPersonCamera } from './camera/ThirdPersonCamera';
 import { StaminaWheel } from './ui/StaminaWheel';
+import { WindStreaks } from './fx/WindStreaks';
 import type { TerrainData } from './world/terrain/heightmap';
 
 function findSpawn(terrain: TerrainData): THREE.Vector3 {
@@ -66,6 +67,8 @@ async function boot() {
   const cam = new ThirdPersonCamera(camera, physics, player.collider);
 
   const staminaWheel = new StaminaWheel(document.getElementById('hud')!);
+  const windStreaks = new WindStreaks();
+  scene.add(windStreaks.group);
 
   const avatar = new THREE.Group();
   const capsuleMesh = new THREE.Mesh(
@@ -89,6 +92,7 @@ async function boot() {
       const fovBoost = player.state === 'gliding' ? 12 : player.sprinting ? 6 : 0;
       cam.update(dt, input.actions.look, player.position, fovBoost);
       staminaWheel.update(player.stamina);
+      windStreaks.update(dt, player.state === 'gliding', player.position, player.worldVelocity);
     },
     (_alpha, frameDt) => {
       avatar.position.copy(player.position);
@@ -101,7 +105,7 @@ async function boot() {
   );
   loop.start();
 
-  (window as unknown as Record<string, unknown>).__debug = { player, input, cam };
+  (window as unknown as Record<string, unknown>).__debug = { player, input, cam, terrain, physics, RAPIER };
 
   document.getElementById('loading')!.classList.add('done');
 }
