@@ -8,6 +8,7 @@ import { Physics } from './physics/Physics';
 import { Input } from './core/Input';
 import { Player } from './player/Player';
 import { ThirdPersonCamera } from './camera/ThirdPersonCamera';
+import { StaminaWheel } from './ui/StaminaWheel';
 import type { TerrainData } from './world/terrain/heightmap';
 
 function findSpawn(terrain: TerrainData): THREE.Vector3 {
@@ -64,6 +65,8 @@ async function boot() {
   const player = new Player(physics, findSpawn(terrain));
   const cam = new ThirdPersonCamera(camera, physics, player.collider);
 
+  const staminaWheel = new StaminaWheel(document.getElementById('hud')!);
+
   const avatar = new THREE.Group();
   const capsuleMesh = new THREE.Mesh(
     new THREE.CapsuleGeometry(Player.RADIUS, Player.HALF_HEIGHT * 2, 4, 12),
@@ -93,6 +96,7 @@ async function boot() {
       const targetYaw = Math.atan2(-player.facing.x, -player.facing.z);
       avatar.rotation.y += shortestAngle(targetYaw - avatar.rotation.y) * (1 - Math.pow(0.75, frameDt * 60));
       renderer.render(scene, camera);
+      staminaWheel.update(player.stamina);
     },
   );
   loop.start();

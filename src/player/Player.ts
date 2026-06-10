@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Physics, RAPIER } from '../physics/Physics';
 import type { Actions } from '../core/Input';
+import { Stamina } from './Stamina';
 
 export type PlayerState = 'grounded' | 'airborne' | 'climbing' | 'gliding';
 
@@ -20,6 +21,7 @@ export class Player {
   velocityY = 0;
   speed = 0; // horizontal speed, drives animation + FOV
   sprinting = false;
+  readonly stamina = new Stamina();
 
   readonly body: RAPIER.RigidBody;
   readonly collider: RAPIER.Collider;
@@ -68,9 +70,13 @@ export class Player {
     const grounded = this.state === 'grounded';
     this.computeMoveDir(actions, cameraYaw);
 
-    this.sprinting = actions.sprintHeld && grounded && this.moveDir.lengthSq() > 0.01;
+    this.sprinting =
+      actions.sprintHeld && grounded && this.moveDir.lengthSq() > 0.01 && this.stamina.canUse;
     const targetSpeed = this.sprinting ? SPRINT_SPEED : WALK_SPEED;
     this.speed = this.moveDir.length() * targetSpeed;
+
+    if (this.sprinting) this.stamina.drain(10 * dt);
+    this.stamina.update(dt, grounded && !this.sprinting);
 
     this.velocityY += GRAVITY * dt;
     if (grounded && actions.jumpPressed) {
