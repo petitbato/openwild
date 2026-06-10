@@ -135,6 +135,12 @@ export class Player {
     const hit = this.physics.raycast(origin, { x: dir.x, y: 0, z: dir.z }, 0.9, this.collider);
     if (!hit || hit.normal.y > 0.64) return false; // not steep enough (cos 50°)
     this.wallNormal.set(hit.normal.x, hit.normal.y, hit.normal.z);
+    // snap to the wall immediately so the re-stick ray in updateClimb is in range
+    this.body.setNextKinematicTranslation({
+      x: hit.point.x + this.wallNormal.x * (Player.RADIUS + 0.15),
+      y: this.position.y,
+      z: hit.point.z + this.wallNormal.z * (Player.RADIUS + 0.15),
+    });
     this.state = 'climbing';
     this.velocityY = 0;
     this.climbLeap = 0;
@@ -146,7 +152,7 @@ export class Player {
     let inward = this.wallNormal.clone().multiplyScalar(-1);
     const origin = this.position.clone().addScaledVector(this.wallNormal, 0.5);
     const hit = this.physics.raycast(origin, inward, 1.2, this.collider);
-    if (!hit) { this.tryVault(); return; }
+    if (!hit) { if (!this.tryVault()) this.exitClimb(); return; }
     this.wallNormal.set(hit.normal.x, hit.normal.y, hit.normal.z);
     inward = this.wallNormal.clone().multiplyScalar(-1);
 
