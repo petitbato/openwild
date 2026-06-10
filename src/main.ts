@@ -4,7 +4,28 @@ import { GameLoop } from './core/GameLoop';
 import { generateTerrain } from './world/terrain/heightmap';
 import { buildTerrainMesh } from './world/terrain/TerrainMesh';
 import { toonMaterial } from './core/toon';
-import { Physics, RAPIER } from './physics/Physics';
+import { Physics } from './physics/Physics';
+import { Input } from './core/Input';
+import { Player } from './player/Player';
+import { ThirdPersonCamera } from './camera/ThirdPersonCamera';
+import type { TerrainData } from './world/terrain/heightmap';
+
+function findSpawn(terrain: TerrainData): THREE.Vector3 {
+  for (let a = 0; a < Math.PI * 2; a += 0.05) {
+    for (let rad = 480; rad > 100; rad -= 4) {
+      const x = Math.cos(a) * rad, z = Math.sin(a) * rad;
+      const h = terrain.heightAt(x, z);
+      if (h > 0.5 && h < 2 && terrain.normalAt(x, z).y > 0.95) {
+        return new THREE.Vector3(x, h + 1.5, z);
+      }
+    }
+  }
+  return new THREE.Vector3(0, terrain.heightAt(0, 0) + 1.5, 0);
+}
+
+function shortestAngle(a: number): number {
+  return Math.atan2(Math.sin(a), Math.cos(a));
+}
 
 async function boot() {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -19,8 +40,6 @@ async function boot() {
   scene.fog = new THREE.Fog(0x9ed7ff, 200, 900);
 
   const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
-  camera.position.set(4, 3, 6);
-  camera.lookAt(0, 0, 0);
 
   const sun = new THREE.DirectionalLight(0xfff4d6, 2.2);
   sun.position.set(50, 80, 30);
@@ -32,10 +51,6 @@ async function boot() {
   const terrainMesh = buildTerrainMesh(terrain);
   scene.add(terrainMesh);
 
-  // temporary fly-over view of the island
-  camera.position.set(0, 350, 620);
-  camera.lookAt(0, 0, 0);
-
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -45,26 +60,39 @@ async function boot() {
   const physics = await Physics.create();
   physics.addStaticMesh(terrainMesh);
 
-  // debug: dynamic ball dropped on the island
-  const ballBody = physics.world.createRigidBody(
-    RAPIER.RigidBodyDesc.dynamic().setTranslation(20, 120, 20),
-  );
-  physics.world.createCollider(RAPIER.ColliderDesc.ball(1).setRestitution(0.6), ballBody);
-  const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), toonMaterial(0xff5252));
-  scene.add(ballMesh);
+  const input = new Input(renderer.domElement);
+  const player = new Player(physics, findSpawn(terrain));
+  const cam = new ThirdPersonCamera(camera, physics, player.collider);
 
-  let orbit = 0;
+  const avatar = new THREE.Group();
+  const capsuleMesh = new THREE.Mesh(
+    new THREE.CapsuleGeometry(Player.RADIUS, Player.HALF_HEIGHT * 2, 4, 12),
+    toonMaterial(0x3aa0c9),
+  );
+  capsuleMesh.castShadow = true;
+  capsuleMesh.position.y = Player.HALF_HEIGHT + Player.RADIUS;
+  avatar.add(capsuleMesh);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 8), toonMaterial(0xffc107));
+  nose.rotation.x = Math.PI / 2;
+  nose.position.set(0, 1.4, -0.4);
+  avatar.add(nose); // facing indicator
+  scene.add(avatar);
+
   const loop = new GameLoop(
     (dt) => {
-      orbit += dt * 0.05;
-      camera.position.set(Math.sin(orbit) * 150, 80, Math.cos(orbit) * 150);
-      camera.lookAt(20, 40, 20);
-
+      input.poll();
+      player.update(dt, input.actions, cam.yaw);
       physics.step();
-      const p = ballBody.translation();
-      ballMesh.position.set(p.x, p.y, p.z);
+      const fovBoost = player.state === 'gliding' ? 12 : player.sprinting ? 6 : 0;
+      cam.update(dt, input.actions.look, player.position, fovBoost);
     },
-    () => renderer.render(scene, camera),
+    () => {
+      avatar.position.copy(player.position);
+      avatar.position.y -= Player.HALF_HEIGHT + Player.RADIUS; // body center -> feet
+      const targetYaw = Math.atan2(player.facing.x, player.facing.z);
+      avatar.rotation.y += shortestAngle(targetYaw - avatar.rotation.y) * 0.25;
+      renderer.render(scene, camera);
+    },
   );
   loop.start();
 
