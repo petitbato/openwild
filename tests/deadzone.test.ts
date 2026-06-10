@@ -26,4 +26,8 @@ describe('applyDeadzone', () => {
     const r = applyDeadzone(1, 1);
     expect(Math.hypot(r.x, r.y)).toBeLessThanOrEqual(1.000001);
   });
+
+  it('returns zero for zero input even with zero threshold', () => {
+    expect(applyDeadzone(0, 0, 0)).toEqual({ x: 0, y: 0 });
+  });
 });
