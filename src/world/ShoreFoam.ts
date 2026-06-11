@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import type { TerrainData } from './terrain/heightmap';
 
-const MAX_INSTANCES = 1500;
+// The ±520 scan at step 4 yields ~2280 waterline cells; 2500 covers the full
+// ring (a 1500 cap left the eastern shore bare — scan ascends in x).
+const MAX_INSTANCES = 2500;
 
 export class ShoreFoam {
   readonly mesh: THREE.InstancedMesh;
