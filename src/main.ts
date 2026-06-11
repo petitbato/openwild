@@ -13,6 +13,8 @@ import { CharacterAvatar } from './player/CharacterAvatar';
 import { Sky } from './world/Sky';
 import { Water } from './world/Water';
 import type { TerrainData } from './world/terrain/heightmap';
+import { scatterProps } from './world/Props';
+import { buildLandmarks } from './world/Landmarks';
 
 function findSpawn(terrain: TerrainData): THREE.Vector3 {
   for (let a = 0; a < Math.PI * 2; a += 0.05) {
@@ -59,6 +61,8 @@ async function boot() {
 
   const physics = await Physics.create();
   physics.addStaticMesh(terrainMesh);
+  scatterProps(scene, physics, terrain);
+  buildLandmarks(scene, physics, terrain);
 
   const input = new Input(renderer.domElement);
   const player = new Player(physics, findSpawn(terrain));
