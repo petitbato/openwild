@@ -15,6 +15,7 @@ import { Water } from './world/Water';
 import type { TerrainData } from './world/terrain/heightmap';
 import { scatterProps } from './world/Props';
 import { buildLandmarks } from './world/Landmarks';
+import { Grass } from './fx/Grass';
 
 function findSpawn(terrain: TerrainData): THREE.Vector3 {
   for (let a = 0; a < Math.PI * 2; a += 0.05) {
@@ -75,6 +76,9 @@ async function boot() {
   const water = new Water();
   scene.add(water.mesh);
 
+  const grass = new Grass(terrain);
+  scene.add(grass.mesh);
+
   const fill = document.getElementById('loading-fill') as HTMLDivElement;
   const avatarModel = await CharacterAvatar.load('/assets/character.glb', (f) => {
     fill.style.width = `${Math.round(f * 100)}%`;
@@ -111,6 +115,7 @@ async function boot() {
       windStreaks.update(dt, player.state === 'gliding', player.position, player.worldVelocity);
       sky.update(dt, scene, camera.position, player.position);
       if (input.heldKeys.has('KeyT')) sky.time01 = (sky.time01 + dt * 0.02) % 1;
+      grass.update(dt, player.position);
     },
     (_alpha, frameDt) => {
       avatar.position.copy(player.position);
