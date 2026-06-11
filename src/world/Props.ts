@@ -25,7 +25,11 @@ export function pickArchetype(h: number, rng: () => number): TreeArchetype {
 // ---- Geometry builders ----
 
 function buildBroadleafTrunk(): THREE.BufferGeometry {
-  return new THREE.CylinderGeometry(0.22, 0.38, 2.6, 6);
+  // CylinderGeometry is centered on the origin — lift by half height so the
+  // base sits at y=0 (instances are placed at terrain height).
+  const g = new THREE.CylinderGeometry(0.22, 0.38, 2.6, 6);
+  g.translate(0, 1.3, 0);
+  return g;
 }
 
 function buildBroadleafCanopy(): THREE.BufferGeometry {
@@ -46,7 +50,10 @@ function buildBroadleafCanopy(): THREE.BufferGeometry {
 }
 
 function buildConiferTrunk(): THREE.BufferGeometry {
-  return new THREE.CylinderGeometry(0.18, 0.3, 1.8, 6);
+  // Same centering correction as the broadleaf trunk.
+  const g = new THREE.CylinderGeometry(0.18, 0.3, 1.8, 6);
+  g.translate(0, 0.9, 0);
+  return g;
 }
 
 function buildConiferCanopy(): THREE.BufferGeometry {
@@ -107,7 +114,7 @@ interface ArchetypeGeometry {
   canopyColor: number;
 }
 
-function buildArchetypeGeometries(): Record<TreeArchetype, ArchetypeGeometry> {
+export function buildArchetypeGeometries(): Record<TreeArchetype, ArchetypeGeometry> {
   return {
     broadleaf: {
       trunk: buildBroadleafTrunk(),
