@@ -1,7 +1,7 @@
 // Shallow-clones the CC0 KayKit Adventurers pack and copies the Rogue model
 // (glTF/GLB + textures) into public/assets/.
 import { execSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readdirSync, statSync } from 'node:fs';
+import { cpSync, mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 
@@ -44,3 +44,5 @@ if (glb) {
   cpSync(dir, 'public/assets/kaykit', { recursive: true });
   console.log('Copied dir', dir, '-> public/assets/kaykit/');
 }
+
+rmSync(tmp, { recursive: true, force: true });

@@ -97,6 +97,7 @@ export class ProceduralPoses {
       const rest = this.restLocal.get(key);
       if (!bone || !rest || !bone.parent) continue;
       // Desired direction: character space -> world -> parent-bone space.
+      // NB: qParent is inverted in place here; it is rewritten next iteration.
       bone.parent.getWorldQuaternion(this.qParent);
       this.vDir.copy(dirChar).applyQuaternion(rootQuat)
         .applyQuaternion(this.qParent.invert()).normalize();

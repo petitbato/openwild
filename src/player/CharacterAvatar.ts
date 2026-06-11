@@ -48,7 +48,6 @@ export class CharacterAvatar {
 
   private constructor(
     scene: THREE.Group,
-    animations: THREE.AnimationClip[],
     mixer: THREE.AnimationMixer,
     actions: CharacterAvatar['actions'],
     poses: ProceduralPoses,
@@ -76,6 +75,7 @@ export class CharacterAvatar {
   // Static factory
   // -------------------------------------------------------------------------
 
+  /** `_url` kept for interface compatibility; the manifest's MODEL_URL is authoritative. */
   static async load(_url: string, onProgress?: (f: number) => void): Promise<CharacterAvatar> {
     // Load model
     const gltf = await new GLTFLoader().loadAsync(MODEL_URL, (e) => {
@@ -169,7 +169,7 @@ export class CharacterAvatar {
     const poses = new ProceduralPoses(gltf.scene, BONES);
     const paraglider = new Paraglider();
 
-    return new CharacterAvatar(gltf.scene, gltf.animations, mixer, actions, poses, paraglider, inner);
+    return new CharacterAvatar(gltf.scene, mixer, actions, poses, paraglider, inner);
   }
 
   // -------------------------------------------------------------------------
