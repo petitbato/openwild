@@ -11,6 +11,7 @@ import { StaminaWheel } from './ui/StaminaWheel';
 import { WindStreaks } from './fx/WindStreaks';
 import { CharacterAvatar } from './player/CharacterAvatar';
 import { Sky } from './world/Sky';
+import { Water } from './world/Water';
 import type { TerrainData } from './world/terrain/heightmap';
 
 function findSpawn(terrain: TerrainData): THREE.Vector3 {
@@ -67,6 +68,9 @@ async function boot() {
   const windStreaks = new WindStreaks();
   scene.add(windStreaks.group);
 
+  const water = new Water();
+  scene.add(water.mesh);
+
   const fill = document.getElementById('loading-fill') as HTMLDivElement;
   const avatarModel = await CharacterAvatar.load('/assets/character.glb', (f) => {
     fill.style.width = `${Math.round(f * 100)}%`;
@@ -74,10 +78,28 @@ async function boot() {
   const avatar = avatarModel.group;
   scene.add(avatar);
 
+  let respawning = false;
+  function respawn() {
+    if (respawning) return;
+    respawning = true;
+    const fade = document.getElementById('fade')!;
+    fade.style.opacity = '1';
+    setTimeout(() => {
+      player.teleport(player.lastGroundedPos.clone().add(new THREE.Vector3(0, 0.5, 0)));
+      fade.style.opacity = '0';
+      setTimeout(() => { respawning = false; }, 600);
+    }, 400);
+  }
+
   const loop = new GameLoop(
     (dt) => {
       input.poll();
       player.update(dt, input.actions, cam.yaw);
+      water.update(dt);
+      const groundBelow = terrain.heightAt(player.position.x, player.position.z);
+      const feetY = player.position.y - (Player.HALF_HEIGHT + Player.RADIUS);
+      if (player.position.y < -30) respawn();                       // fell through world
+      else if (groundBelow < -1.5 && feetY < 0.2) respawn();        // deep water = drown
       physics.step();
       const fovBoost = player.state === 'gliding' ? 12 : player.sprinting ? 6 : 0;
       cam.update(dt, input.actions.look, player.position, fovBoost);
@@ -99,7 +121,7 @@ async function boot() {
   loop.start();
 
   (window as unknown as Record<string, unknown>).__debug = {
-    player, input, cam, terrain, physics, RAPIER, renderer, scene, camera, avatarModel, avatar, sky,
+    player, input, cam, terrain, physics, RAPIER, renderer, scene, camera, avatarModel, avatar, sky, water,
   };
 
   document.getElementById('loading')!.classList.add('done');
