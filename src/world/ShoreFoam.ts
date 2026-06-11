@@ -17,7 +17,7 @@ export class ShoreFoam {
     this.mat = new THREE.MeshBasicMaterial({
       color: 0xeafaff,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.32, // matches update()'s pulse midpoint — avoids a first-frame flash
       depthWrite: false,
     });
 

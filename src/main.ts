@@ -117,6 +117,7 @@ async function boot() {
   let prevAirborne = false;
   let prevVy = 0;
   let sprintDustTimer = 0;
+  const feetPos = new THREE.Vector3();
 
   let respawning = false;
   function respawn() {
@@ -152,7 +153,7 @@ async function boot() {
       foam.update(dt);
 
       // Dust triggers
-      const feetPos = player.position.clone();
+      feetPos.copy(player.position);
       feetPos.y -= Player.HALF_HEIGHT + Player.RADIUS;
       const isAirborne = player.state === 'airborne' || player.state === 'gliding' || player.state === 'climbing';
       if (prevAirborne && !isAirborne && prevVy < -8) {
