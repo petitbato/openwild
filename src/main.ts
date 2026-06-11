@@ -22,6 +22,8 @@ import { Campfire } from './world/Campfire';
 import { Fireflies } from './fx/Fireflies';
 import { Clouds } from './world/Clouds';
 import { ShoreFoam } from './world/ShoreFoam';
+import { Dust } from './fx/Dust';
+import { Birds } from './fx/Birds';
 
 function findSpawn(terrain: TerrainData): THREE.Vector3 {
   for (let a = 0; a < Math.PI * 2; a += 0.05) {
@@ -99,12 +101,22 @@ async function boot() {
   window.addEventListener('pointerdown', () => audio.init(), { once: true });
   window.addEventListener('keydown', () => audio.init(), { once: true });
 
+  const dust = new Dust();
+  scene.add(dust.mesh);
+
+  const birds = new Birds(() => audio.birdCry());
+  scene.add(birds.group);
+
   const fill = document.getElementById('loading-fill') as HTMLDivElement;
   const avatarModel = await CharacterAvatar.load('/assets/character.glb', (f) => {
     fill.style.width = `${Math.round(f * 100)}%`;
   });
   const avatar = avatarModel.group;
   scene.add(avatar);
+
+  let prevAirborne = false;
+  let prevVy = 0;
+  let sprintDustTimer = 0;
 
   let respawning = false;
   function respawn() {
@@ -134,13 +146,36 @@ async function boot() {
       staminaWheel.update(player.stamina);
       windStreaks.update(dt, player.state === 'gliding', player.position, player.worldVelocity);
       sky.update(dt, scene, camera.position, player.position);
-      const nightW = 1 - dayWeight(sky.time01);
-      campfire.update(dt, nightW);
-      fireflies.update(dt, nightW);
       if (input.heldKeys.has('KeyT')) sky.time01 = (sky.time01 + dt * 0.02) % 1;
       grass.update(dt, player.position);
       clouds.update(dt);
       foam.update(dt);
+
+      // Dust triggers
+      const feetPos = player.position.clone();
+      feetPos.y -= Player.HALF_HEIGHT + Player.RADIUS;
+      const isAirborne = player.state === 'airborne' || player.state === 'gliding' || player.state === 'climbing';
+      if (prevAirborne && !isAirborne && prevVy < -8) {
+        dust.burst(feetPos, 10, 2.2);
+      }
+      if (player.state === 'grounded' && player.sprinting) {
+        sprintDustTimer -= dt;
+        if (sprintDustTimer <= 0) {
+          dust.burst(feetPos, 2, 0.8);
+          sprintDustTimer = 0.15;
+        }
+      } else {
+        sprintDustTimer = 0;
+      }
+      prevAirborne = isAirborne;
+      prevVy = player.velocityY;
+
+      const dayW = dayWeight(sky.time01);
+      const nightW = 1 - dayW;
+      dust.update(dt, camera);
+      birds.update(dt, dayW);
+      campfire.update(dt, nightW);
+      fireflies.update(dt, nightW);
       audio.update(dt, player.state, player.speed, sky.time01, groundBelow);
     },
     (_alpha, frameDt) => {
@@ -156,7 +191,7 @@ async function boot() {
   loop.start();
 
   (window as unknown as Record<string, unknown>).__debug = {
-    player, input, cam, terrain, physics, RAPIER, renderer, scene, camera, avatarModel, avatar, sky, water, audio, campfire, fireflies, clouds, foam,
+    player, input, cam, terrain, physics, RAPIER, renderer, scene, camera, avatarModel, avatar, sky, water, audio, campfire, fireflies, clouds, foam, dust, birds,
   };
 
   document.getElementById('loading')!.classList.add('done');

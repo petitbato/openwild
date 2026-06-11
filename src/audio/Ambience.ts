@@ -31,12 +31,12 @@ export class Ambience {
     osc.start(); lfo.start();
   }
 
-  private chirp(): void {
-    const t = this.ctx.currentTime;
+  chirp(freqBase = 2800, delay = 0): void {
+    const t = this.ctx.currentTime + delay;
     const osc = this.ctx.createOscillator(); osc.type = 'sine';
-    osc.frequency.setValueAtTime(2800, t);
-    osc.frequency.linearRampToValueAtTime(3400, t + 0.07);
-    osc.frequency.linearRampToValueAtTime(2500, t + 0.16);
+    osc.frequency.setValueAtTime(freqBase, t);
+    osc.frequency.linearRampToValueAtTime(freqBase * 3400 / 2800, t + 0.07);
+    osc.frequency.linearRampToValueAtTime(freqBase * 2500 / 2800, t + 0.16);
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0, t);
     g.gain.linearRampToValueAtTime(0.045, t + 0.02);

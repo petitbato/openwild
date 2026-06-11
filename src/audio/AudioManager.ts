@@ -59,6 +59,12 @@ export class AudioManager {
     this.ambience = new Ambience(this.ctx, this.master);
   }
 
+  birdCry(): void {
+    if (!this.ambience) return;
+    this.ambience.chirp(1900);
+    this.ambience.chirp(1900, 0.18);
+  }
+
   private footstep(intensity: number): void {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
