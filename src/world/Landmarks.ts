@@ -38,7 +38,7 @@ function column(
   }
 }
 
-export function buildLandmarks(scene: THREE.Scene, physics: Physics, terrain: TerrainData): void {
+export function buildLandmarks(scene: THREE.Scene, physics: Physics, terrain: TerrainData): { ruins: THREE.Vector3[] } {
   // tower site: highest point in the 120-300 m ring from center
   let tx = 0, tz = 0, th = -Infinity;
   for (let a = 0; a < Math.PI * 2; a += 0.03) {
@@ -78,8 +78,10 @@ export function buildLandmarks(scene: THREE.Scene, physics: Physics, terrain: Te
       continue outer;
     }
   }
+  const ruinPositions: THREE.Vector3[] = [];
   for (const site of sites) {
     const y = terrain.heightAt(site.x, site.z);
+    ruinPositions.push(new THREE.Vector3(site.x, y, site.z));
     const heights = [3.5, 2.2, 4, 1.4, 3, 2.6, 1.8, 3.8]; // "broken" ring
     for (let i = 0; i < 8; i++) {
       const ang = (i / 8) * Math.PI * 2;
@@ -91,4 +93,5 @@ export function buildLandmarks(scene: THREE.Scene, physics: Physics, terrain: Te
     stoneBox(scene, physics, 1, 5, 1, site.x + 2, y + 2.5, site.z);
     stoneBox(scene, physics, 5.4, 1, 1.2, site.x, y + 5.5, site.z);
   }
+  return { ruins: ruinPositions };
 }

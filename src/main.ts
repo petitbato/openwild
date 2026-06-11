@@ -17,6 +17,9 @@ import { scatterProps } from './world/Props';
 import { buildLandmarks } from './world/Landmarks';
 import { Grass } from './fx/Grass';
 import { AudioManager } from './audio/AudioManager';
+import { dayWeight } from './audio/Ambience';
+import { Campfire } from './world/Campfire';
+import { Fireflies } from './fx/Fireflies';
 
 function findSpawn(terrain: TerrainData): THREE.Vector3 {
   for (let a = 0; a < Math.PI * 2; a += 0.05) {
@@ -64,7 +67,11 @@ async function boot() {
   const physics = await Physics.create();
   physics.addStaticMesh(terrainMesh);
   scatterProps(scene, physics, terrain);
-  buildLandmarks(scene, physics, terrain);
+  const { ruins } = buildLandmarks(scene, physics, terrain);
+  const campfire = new Campfire(ruins[0]);
+  scene.add(campfire.group);
+  const fireflies = new Fireflies(ruins);
+  scene.add(fireflies.points);
 
   const input = new Input(renderer.domElement);
   const player = new Player(physics, findSpawn(terrain));
@@ -119,6 +126,9 @@ async function boot() {
       staminaWheel.update(player.stamina);
       windStreaks.update(dt, player.state === 'gliding', player.position, player.worldVelocity);
       sky.update(dt, scene, camera.position, player.position);
+      const nightW = 1 - dayWeight(sky.time01);
+      campfire.update(dt, nightW);
+      fireflies.update(dt, nightW);
       if (input.heldKeys.has('KeyT')) sky.time01 = (sky.time01 + dt * 0.02) % 1;
       grass.update(dt, player.position);
       audio.update(dt, player.state, player.speed, sky.time01, groundBelow);
@@ -136,7 +146,7 @@ async function boot() {
   loop.start();
 
   (window as unknown as Record<string, unknown>).__debug = {
-    player, input, cam, terrain, physics, RAPIER, renderer, scene, camera, avatarModel, avatar, sky, water, audio,
+    player, input, cam, terrain, physics, RAPIER, renderer, scene, camera, avatarModel, avatar, sky, water, audio, campfire, fireflies,
   };
 
   document.getElementById('loading')!.classList.add('done');
