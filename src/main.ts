@@ -136,7 +136,7 @@ async function boot() {
   loop.start();
 
   (window as unknown as Record<string, unknown>).__debug = {
-    player, input, cam, terrain, physics, RAPIER, renderer, scene, camera, avatarModel, avatar, sky, water,
+    player, input, cam, terrain, physics, RAPIER, renderer, scene, camera, avatarModel, avatar, sky, water, audio,
   };
 
   document.getElementById('loading')!.classList.add('done');
