@@ -258,7 +258,10 @@ export class Player {
     this.body.setNextKinematicTranslation({ x: overOrigin.x, y: standY, z: overOrigin.z });
     this.state = 'grounded';
     this.velocityY = 0;
-    this.lastGroundedPos.set(overOrigin.x, standY, overOrigin.z);
+    // Same waterline guard as applyKinematicMove: never anchor respawn underwater.
+    if (standY - (Player.HALF_HEIGHT + Player.RADIUS) > 0.2) {
+      this.lastGroundedPos.set(overOrigin.x, standY, overOrigin.z);
+    }
     this.climbCooldown = 0.2; // brief no-regrab window after topping out
     return true;
   }
