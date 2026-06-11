@@ -43,9 +43,6 @@ export class ShoreFoam {
 
     this.mesh.count = count;
     this.mesh.instanceMatrix.needsUpdate = true;
-
-    // Log instance count once for diagnostics
-    console.log(`[ShoreFoam] instances placed: ${count}`);
   }
 
   update(dt: number): void {
