@@ -72,18 +72,29 @@ function buildConiferCanopy(): THREE.BufferGeometry {
   return merged;
 }
 
+// Top of the leaning trunk chain (see buildPalmTrunk) — where fronds attach.
+const PALM_CROWN_X = 0.53;
+const PALM_CROWN_Y = 3.45;
+
 function buildPalmTrunk(): THREE.BufferGeometry {
-  const segments: [number, number, number][] = [
-    [0, 0, 0],
-    [0.18, 1.2, 0.1],
-    [0.42, 2.4, 0.2],
-  ];
-  const geos = segments.map(([xOff, yOff, zRot]) => {
-    const g = new THREE.CylinderGeometry(0.14, 0.18, 1.2, 6).toNonIndexed();
-    g.rotateZ(zRot);
-    g.translate(xOff, yOff + 0.6, 0);
-    return g;
-  });
+  // Chain three progressively tilted segments end to end. Each cylinder gets
+  // its pivot moved to its base, is tilted, then placed where the previous
+  // segment ends, so the joints stay connected (a curved, leaning trunk).
+  const SEG_LEN = 1.2;
+  const tilts = [0, -0.15, -0.3]; // negative rotateZ leans the top toward +x
+  const geos: THREE.BufferGeometry[] = [];
+  let baseX = 0, baseY = 0;
+  for (const tilt of tilts) {
+    // Slightly longer than the chain step so each joint overlaps into the
+    // next segment instead of showing a seam.
+    const g = new THREE.CylinderGeometry(0.14, 0.18, SEG_LEN + 0.1, 6).toNonIndexed();
+    g.translate(0, (SEG_LEN + 0.1) / 2, 0); // pivot at the segment base
+    g.rotateZ(tilt);
+    g.translate(baseX, baseY, 0);
+    geos.push(g);
+    baseX += Math.sin(-tilt) * SEG_LEN;
+    baseY += Math.cos(tilt) * SEG_LEN;
+  }
   const merged = mergeGeometries(geos, false);
   geos.forEach(g => g.dispose());
   return merged;
@@ -93,11 +104,10 @@ function buildPalmCanopy(): THREE.BufferGeometry {
   const fronds: THREE.BufferGeometry[] = [];
   for (let i = 0; i < 6; i++) {
     const g = new THREE.PlaneGeometry(0.5, 1.8).toNonIndexed();
-    // Droop around X, fan around Y
-    g.rotateX(-0.9 + i * 0.05);
-    g.rotateY(i * Math.PI / 3);
-    // Position at trunk top (lean x ≈ 0.6, y ≈ 3.3)
-    g.translate(0.6, 3.3, 0);
+    g.translate(0, 0.9, 0);        // pivot at the frond base; blade points up
+    g.rotateX(-1.1 + i * 0.05);    // tip the blade outward (toward -z)
+    g.rotateY(i * Math.PI / 3);    // fan the six fronds around the crown
+    g.translate(PALM_CROWN_X, PALM_CROWN_Y, 0);
     fronds.push(g);
   }
   const merged = mergeGeometries(fronds, false);

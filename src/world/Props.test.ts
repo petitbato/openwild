@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type * as THREE from 'three';
 import { buildArchetypeGeometries, pickArchetype } from './Props';
 
 const rngAt = (v: number) => () => v;
@@ -24,6 +25,34 @@ describe('pickArchetype', () => {
   });
 });
 
+/**
+ * Horizontal distance between the top-ring centroid of trunk segment `joint`
+ * and the bottom-ring centroid of segment `joint + 1`. Segments are merged in
+ * order with identical vertex counts, so the buffer splits into equal blocks.
+ */
+function jointGap(trunk: THREE.BufferGeometry, segCount: number, joint: number): number {
+  const pos = trunk.getAttribute('position');
+  const per = pos.count / segCount;
+  const ring = (seg: number, top: boolean): { x: number; z: number } => {
+    let minY = Infinity, maxY = -Infinity;
+    for (let i = seg * per; i < (seg + 1) * per; i++) {
+      const y = pos.getY(i);
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    const lim = top ? maxY - 0.25 : minY + 0.25;
+    let sx = 0, sz = 0, n = 0;
+    for (let i = seg * per; i < (seg + 1) * per; i++) {
+      const y = pos.getY(i);
+      if (top ? y >= lim : y <= lim) { sx += pos.getX(i); sz += pos.getZ(i); n++; }
+    }
+    return { x: sx / n, z: sz / n };
+  };
+  const a = ring(joint, true);
+  const b = ring(joint + 1, false);
+  return Math.hypot(a.x - b.x, a.z - b.z);
+}
+
 describe('archetype geometries', () => {
   const geos = buildArchetypeGeometries();
   const archetypes = ['broadleaf', 'conifer', 'palm'] as const;
@@ -43,4 +72,18 @@ describe('archetype geometries', () => {
       expect(canopy.boundingBox!.min.y).toBeLessThan(trunk.boundingBox!.max.y);
     });
   }
+
+  it('palm trunk segments chain end to end (no lateral gap at the joints)', () => {
+    const trunk = geos.palm.trunk;
+    expect(jointGap(trunk, 3, 0)).toBeLessThan(0.12);
+    expect(jointGap(trunk, 3, 1)).toBeLessThan(0.12);
+  });
+
+  it('palm fronds spread outward from the crown, not through it', () => {
+    // Centered frond planes poke through the opposite side of the crown
+    // (the "X" look) and dip well below the attachment point.
+    const canopy = geos.palm.canopy;
+    canopy.computeBoundingBox();
+    expect(canopy.boundingBox!.min.y).toBeGreaterThan(3.0);
+  });
 });
