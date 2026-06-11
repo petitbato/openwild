@@ -99,7 +99,9 @@ async function boot() {
   );
   loop.start();
 
-  (window as unknown as Record<string, unknown>).__debug = { player, input, cam, terrain, physics, RAPIER };
+  (window as unknown as Record<string, unknown>).__debug = {
+    player, input, cam, terrain, physics, RAPIER, renderer, scene, camera, avatarModel, avatar,
+  };
 
   document.getElementById('loading')!.classList.add('done');
 }
