@@ -173,7 +173,7 @@ async function boot() {
 
       const dayW = dayWeight(sky.time01);
       const nightW = 1 - dayW;
-      dust.update(dt, camera);
+      dust.update(dt, camera, 0.35 + 0.65 * dayW);
       birds.update(dt, dayW);
       campfire.update(dt, nightW);
       fireflies.update(dt, nightW);

@@ -55,7 +55,9 @@ export class Dust {
     }
   }
 
-  update(dt: number, camera: THREE.Camera): void {
+  /** `brightness` dims the unlit material so puffs don't glow at dusk/night. */
+  update(dt: number, camera: THREE.Camera, brightness = 1): void {
+    this.mat.opacity = 0.55 * brightness;
     const camQuat = camera.quaternion;
 
     for (let i = 0; i < MAX; i++) {
