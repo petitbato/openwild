@@ -1,2 +1,6 @@
 node_modules/
 dist/
+
+# Local workflow docs (Claude Code specs/plans) — kept out of the public repo
+docs/superpowers/
+.claude/
