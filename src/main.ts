@@ -121,7 +121,7 @@ async function boot() {
       sky.update(dt, scene, camera.position, player.position);
       if (input.heldKeys.has('KeyT')) sky.time01 = (sky.time01 + dt * 0.02) % 1;
       grass.update(dt, player.position);
-      audio.update(dt, player.state, player.speed);
+      audio.update(dt, player.state, player.speed, sky.time01, groundBelow);
     },
     (_alpha, frameDt) => {
       avatar.position.copy(player.position);
