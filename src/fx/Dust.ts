@@ -16,6 +16,7 @@ export function stepPuff(p: Puff, dt: number): boolean {
 }
 
 const MAX = 64;
+const ZERO_MAT = new THREE.Matrix4().makeScale(0, 0, 0);
 
 export class Dust {
   readonly mesh: THREE.InstancedMesh;
@@ -30,9 +31,8 @@ export class Dust {
     this.mesh.frustumCulled = false;
     this.mat.opacity = 0.55;
     // Hide all instances initially
-    const zero = new THREE.Matrix4().makeScale(0, 0, 0);
     for (let i = 0; i < MAX; i++) {
-      this.mesh.setMatrixAt(i, zero);
+      this.mesh.setMatrixAt(i, ZERO_MAT);
     }
     this.mesh.instanceMatrix.needsUpdate = true;
   }
@@ -57,18 +57,17 @@ export class Dust {
 
   update(dt: number, camera: THREE.Camera): void {
     const camQuat = camera.quaternion;
-    const zero = new THREE.Matrix4().makeScale(0, 0, 0);
 
     for (let i = 0; i < MAX; i++) {
       const p = this.puffs[i];
       if (p === null) {
-        this.mesh.setMatrixAt(i, zero);
+        this.mesh.setMatrixAt(i, ZERO_MAT);
         continue;
       }
       const alive = stepPuff(p, dt);
       if (!alive) {
         this.puffs[i] = null;
-        this.mesh.setMatrixAt(i, zero);
+        this.mesh.setMatrixAt(i, ZERO_MAT);
         continue;
       }
       const scale = 0.6 + p.age / p.life;
