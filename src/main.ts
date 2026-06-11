@@ -16,6 +16,7 @@ import type { TerrainData } from './world/terrain/heightmap';
 import { scatterProps } from './world/Props';
 import { buildLandmarks } from './world/Landmarks';
 import { Grass } from './fx/Grass';
+import { AudioManager } from './audio/AudioManager';
 
 function findSpawn(terrain: TerrainData): THREE.Vector3 {
   for (let a = 0; a < Math.PI * 2; a += 0.05) {
@@ -79,6 +80,10 @@ async function boot() {
   const grass = new Grass(terrain);
   scene.add(grass.mesh);
 
+  const audio = new AudioManager();
+  window.addEventListener('pointerdown', () => audio.init(), { once: true });
+  window.addEventListener('keydown', () => audio.init(), { once: true });
+
   const fill = document.getElementById('loading-fill') as HTMLDivElement;
   const avatarModel = await CharacterAvatar.load('/assets/character.glb', (f) => {
     fill.style.width = `${Math.round(f * 100)}%`;
@@ -116,6 +121,7 @@ async function boot() {
       sky.update(dt, scene, camera.position, player.position);
       if (input.heldKeys.has('KeyT')) sky.time01 = (sky.time01 + dt * 0.02) % 1;
       grass.update(dt, player.position);
+      audio.update(dt, player.state, player.speed);
     },
     (_alpha, frameDt) => {
       avatar.position.copy(player.position);
