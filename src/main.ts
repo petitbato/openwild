@@ -20,6 +20,8 @@ import { AudioManager } from './audio/AudioManager';
 import { dayWeight } from './audio/Ambience';
 import { Campfire } from './world/Campfire';
 import { Fireflies } from './fx/Fireflies';
+import { Clouds } from './world/Clouds';
+import { ShoreFoam } from './world/ShoreFoam';
 
 function findSpawn(terrain: TerrainData): THREE.Vector3 {
   for (let a = 0; a < Math.PI * 2; a += 0.05) {
@@ -87,6 +89,12 @@ async function boot() {
   const grass = new Grass(terrain);
   scene.add(grass.mesh);
 
+  const clouds = new Clouds();
+  scene.add(clouds.group);
+
+  const foam = new ShoreFoam(terrain);
+  scene.add(foam.mesh);
+
   const audio = new AudioManager();
   window.addEventListener('pointerdown', () => audio.init(), { once: true });
   window.addEventListener('keydown', () => audio.init(), { once: true });
@@ -131,6 +139,8 @@ async function boot() {
       fireflies.update(dt, nightW);
       if (input.heldKeys.has('KeyT')) sky.time01 = (sky.time01 + dt * 0.02) % 1;
       grass.update(dt, player.position);
+      clouds.update(dt);
+      foam.update(dt);
       audio.update(dt, player.state, player.speed, sky.time01, groundBelow);
     },
     (_alpha, frameDt) => {
@@ -146,7 +156,7 @@ async function boot() {
   loop.start();
 
   (window as unknown as Record<string, unknown>).__debug = {
-    player, input, cam, terrain, physics, RAPIER, renderer, scene, camera, avatarModel, avatar, sky, water, audio, campfire, fireflies,
+    player, input, cam, terrain, physics, RAPIER, renderer, scene, camera, avatarModel, avatar, sky, water, audio, campfire, fireflies, clouds, foam,
   };
 
   document.getElementById('loading')!.classList.add('done');
