@@ -53,6 +53,8 @@ export class Music {
     const buf = ctx.createBuffer(2, len, ctx.sampleRate);
     for (let ch = 0; ch < 2; ch++) {
       const d = buf.getChannelData(ch);
+      // Decay exponent = -3 * t (t in seconds): tail ≈ e^-7.5 ≈ 0.06% at the
+      // buffer end, so `seconds` sets both the length and the audible decay.
       for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-3 * (i / len) * seconds);
     }
     return buf;
@@ -73,6 +75,7 @@ export class Music {
       g.gain.setTargetAtTime(0, when + 0.01, 1.1 / (i + 1));
       osc.connect(g); g.connect(this.out);
       osc.start(when); osc.stop(when + 4);
+      osc.onended = () => { g.disconnect(); osc.disconnect(); };
     }
   }
 

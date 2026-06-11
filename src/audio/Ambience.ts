@@ -18,6 +18,7 @@ export function dayWeight(time01: number): number {
 export class Ambience {
   private cricketGain: GainNode;
   private birdTimer = 3;
+  private doubleChirpIn = -1; // seconds until the echo chirp; <0 = none pending
   constructor(private ctx: AudioContext, private dest: AudioNode) {
     // Cricket bed: 4.2kHz sine, tremolo via LFO -> gain, mastered by night weight.
     const osc = ctx.createOscillator(); osc.frequency.value = 4200; osc.type = 'sine';
@@ -43,15 +44,20 @@ export class Ambience {
     const pan = this.ctx.createStereoPanner(); pan.pan.value = Math.random() * 1.6 - 0.8;
     osc.connect(g); g.connect(pan); pan.connect(this.dest);
     osc.start(t); osc.stop(t + 0.4);
+    osc.onended = () => { osc.disconnect(); g.disconnect(); pan.disconnect(); };
   }
 
   update(dt: number, time01: number): void {
     const day = dayWeight(time01);
     this.cricketGain.gain.setTargetAtTime((1 - day) * 0.028, this.ctx.currentTime, 0.8);
+    if (this.doubleChirpIn >= 0) {
+      this.doubleChirpIn -= dt;
+      if (this.doubleChirpIn < 0) this.chirp(); // echo of a double chirp
+    }
     this.birdTimer -= dt;
     if (this.birdTimer <= 0 && day > 0.4 && Math.random() < day) {
       this.chirp();
-      if (Math.random() < 0.5) setTimeout(() => this.chirp(), 140); // double chirp
+      if (Math.random() < 0.5) this.doubleChirpIn = 0.14;
       this.birdTimer = 2 + Math.random() * 7;
     } else if (this.birdTimer <= 0) {
       this.birdTimer = 1.5;

@@ -13,6 +13,26 @@ export class AudioManager {
   private music: Music | null = null;
   private ambience: Ambience | null = null;
 
+  /** Looping white noise -> bandpass -> gain(0) -> master. Returns the gain for level control. */
+  private startNoiseLoop(ctx: AudioContext, freq: number, q: number): GainNode {
+    const len = ctx.sampleRate * 2;
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = freq;
+    bp.Q.value = q;
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    src.connect(bp).connect(gain).connect(this.master);
+    src.start();
+    return gain;
+  }
+
   /** Call from a user-gesture handler (browser autoplay policy). Idempotent. */
   init(): void {
     if (this.ctx) return;
@@ -21,59 +41,17 @@ export class AudioManager {
     this.master.gain.value = 0.4;
     this.master.connect(this.ctx.destination);
 
-    // looping wind: filtered white noise
-    const len = this.ctx.sampleRate * 2;
-    const windBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-    const windData = windBuf.getChannelData(0);
-    for (let i = 0; i < len; i++) windData[i] = Math.random() * 2 - 1;
-    const windSrc = this.ctx.createBufferSource();
-    windSrc.buffer = windBuf;
-    windSrc.loop = true;
-    const windBp = this.ctx.createBiquadFilter();
-    windBp.type = 'bandpass';
-    windBp.frequency.value = 500;
-    windBp.Q.value = 0.5;
-    this.windGain = this.ctx.createGain();
-    this.windGain.gain.value = 0;
-    windSrc.connect(windBp).connect(this.windGain).connect(this.master);
-    windSrc.start();
+    // Looping beds: wind, grass rustle, shore waves (filtered white noise)
+    this.windGain = this.startNoiseLoop(this.ctx, 500, 0.5);
+    this.grassGain = this.startNoiseLoop(this.ctx, 1100, 0.8);
+    this.waveGain = this.startNoiseLoop(this.ctx, 380, 0.6);
 
-    // Terrain loop: grass rustle (noise -> bandpass 1100 Hz Q 0.8)
-    const grassBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-    const grassData = grassBuf.getChannelData(0);
-    for (let i = 0; i < len; i++) grassData[i] = Math.random() * 2 - 1;
-    const grassSrc = this.ctx.createBufferSource();
-    grassSrc.buffer = grassBuf;
-    grassSrc.loop = true;
-    const grassBp = this.ctx.createBiquadFilter();
-    grassBp.type = 'bandpass';
-    grassBp.frequency.value = 1100;
-    grassBp.Q.value = 0.8;
-    this.grassGain = this.ctx.createGain();
-    this.grassGain.gain.value = 0;
-    grassSrc.connect(grassBp).connect(this.grassGain).connect(this.master);
-    grassSrc.start();
-
-    // Terrain loop: shore waves (noise -> bandpass 380 Hz Q 0.6 + 0.08 Hz LFO modulation)
-    const waveBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-    const waveData = waveBuf.getChannelData(0);
-    for (let i = 0; i < len; i++) waveData[i] = Math.random() * 2 - 1;
-    const waveSrc = this.ctx.createBufferSource();
-    waveSrc.buffer = waveBuf;
-    waveSrc.loop = true;
-    const waveBp = this.ctx.createBiquadFilter();
-    waveBp.type = 'bandpass';
-    waveBp.frequency.value = 380;
-    waveBp.Q.value = 0.6;
-    this.waveGain = this.ctx.createGain();
-    this.waveGain.gain.value = 0;
+    // Waves get a slow swell: 0.08 Hz LFO into the wave gain
     const waveLfo = this.ctx.createOscillator();
     waveLfo.frequency.value = 0.08;
     const waveLfoAmp = this.ctx.createGain();
     waveLfoAmp.gain.value = 0.012;
     waveLfo.connect(waveLfoAmp); waveLfoAmp.connect(this.waveGain.gain);
-    waveSrc.connect(waveBp).connect(this.waveGain).connect(this.master);
-    waveSrc.start();
     waveLfo.start();
 
     // Composed music and day/night ambience
