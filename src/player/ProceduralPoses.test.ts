@@ -24,17 +24,39 @@ describe('advanceClimbPhase', () => {
   });
 });
 
-describe('pose targets', () => {
-  it('climb alternates limbs: half a cycle apart, arms mirror', () => {
-    const p0 = climbTargets(0);
-    const pHalf = climbTargets(Math.PI);
-    expect(p0.armL.x).toBeCloseTo(pHalf.armR.x, 5);
-    expect(p0.legR.x).toBeCloseTo(pHalf.legL.x, 5);
+describe('climb targets (bone directions, wall at -Z)', () => {
+  it('L-hand reaches with R-foot, mirrored half a cycle later', () => {
+    const reach = climbTargets(Math.PI / 2); // sin = +1
+    const other = climbTargets(3 * Math.PI / 2); // sin = -1
+    // armL highest when legR is most lifted
+    expect(reach.armL.y).toBeGreaterThan(other.armL.y);
+    expect(reach.legR.y).toBeGreaterThan(other.legR.y);
+    // mirrored pair half a cycle later
+    expect(reach.armL.y).toBeCloseTo(other.armR.y, 5);
+    expect(reach.legR.y).toBeCloseTo(other.legL.y, 5);
   });
-  it('glide raises both arms symmetrically', () => {
+  it('all limbs angled toward the wall (-Z), legs pointing down', () => {
+    const p = climbTargets(0.7);
+    for (const k of ['spine', 'armL', 'armR', 'forearmL', 'forearmR', 'legL', 'legR'] as const) {
+      expect(p[k].z).toBeLessThan(0);
+    }
+    expect(p.legL.y).toBeLessThan(0);
+    expect(p.legR.y).toBeLessThan(0);
+  });
+});
+
+describe('glide targets', () => {
+  it('raises both arms symmetrically toward the handles', () => {
     const g = glideTargets(0);
-    expect(g.armL.x).toBeLessThan(-1.5);
-    expect(g.armL.x).toBeCloseTo(g.armR.x, 5);
-    expect(g.armL.z).toBeCloseTo(-g.armR.z, 5);
+    expect(g.armL.y).toBeGreaterThan(0.5);
+    expect(g.armL.y).toBeCloseTo(g.armR.y, 5);
+    expect(g.armL.x).toBeCloseTo(-g.armR.x, 5);
+  });
+  it('legs dangle down and sway in counterphase', () => {
+    const t = Math.PI / 4; // sin(2t) = 1 -> max sway
+    const g = glideTargets(t);
+    expect(g.legL.y).toBeLessThan(0);
+    expect(g.legR.y).toBeLessThan(0);
+    expect(g.legL.z - g.legR.z).toBeCloseTo(2 * 0.06, 5);
   });
 });

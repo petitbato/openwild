@@ -8,10 +8,15 @@ import type { Player, PlayerState } from './Player';
 
 // ---------- helpers --------------------------------------------------------
 
+// GLTFLoader sanitizes node names (strips dots etc.) — match what it produces.
+const HANDSLOTS = new Set(
+  ['handslot.l', 'handslot.r'].map((n) => THREE.PropertyBinding.sanitizeNodeName(n)),
+);
+
 function isUnderHandslot(obj: THREE.Object3D): boolean {
   let cur: THREE.Object3D | null = obj.parent;
   while (cur) {
-    if (cur.name === 'handslot.l' || cur.name === 'handslot.r') return true;
+    if (HANDSLOTS.has(cur.name)) return true;
     cur = cur.parent;
   }
   return false;
@@ -227,7 +232,7 @@ export class CharacterAvatar {
     }
 
     this.mixer.update(dt);
-    this.poses.update(dt, player);
+    this.poses.update(dt, player, this.group.quaternion);
     this.paraglider.update(dt, s === 'gliding');
 
     // Glide lean

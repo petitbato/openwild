@@ -8,9 +8,11 @@ export class Paraglider {
 
   constructor() {
     // Canopy: half-sphere segment squashed into a wing.
+    const canopyMat = toonMaterial(0xc8e8f5);
+    canopyMat.side = THREE.DoubleSide; // underside visible while gliding below it
     const canopy = new THREE.Mesh(
       new THREE.SphereGeometry(1.15, 14, 6, 0, Math.PI * 2, 0, Math.PI * 0.32),
-      toonMaterial(0xc8e8f5),
+      canopyMat,
     );
     canopy.scale.set(1.25, 0.55, 0.85);
     // Rim band: darker ring under the canopy edge.
@@ -33,7 +35,7 @@ export class Paraglider {
     shell.scale.multiplyScalar(1.04);
     this.group.add(shell);
     // Anchor above the avatar's head (group is added to avatar.group by a later task).
-    this.group.position.set(0, 2.15, 0.05);
+    this.group.position.set(0, 1.95, 0.05);
     this.group.visible = false;
   }
 
