@@ -23,6 +23,8 @@ export class Input {
   private jumpQueued = false;
   private padJumpWas = false;
 
+  get heldKeys(): ReadonlySet<string> { return this.keys; }
+
   constructor(canvas: HTMLElement) {
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;

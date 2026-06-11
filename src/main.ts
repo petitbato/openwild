@@ -10,6 +10,7 @@ import { ThirdPersonCamera } from './camera/ThirdPersonCamera';
 import { StaminaWheel } from './ui/StaminaWheel';
 import { WindStreaks } from './fx/WindStreaks';
 import { CharacterAvatar } from './player/CharacterAvatar';
+import { Sky } from './world/Sky';
 import type { TerrainData } from './world/terrain/heightmap';
 
 function findSpawn(terrain: TerrainData): THREE.Vector3 {
@@ -38,16 +39,12 @@ async function boot() {
   document.getElementById('app')!.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x9ed7ff);
   scene.fog = new THREE.Fog(0x9ed7ff, 200, 900);
 
   const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
 
-  const sun = new THREE.DirectionalLight(0xfff4d6, 2.2);
-  sun.position.set(50, 80, 30);
-  sun.castShadow = true;
-  scene.add(sun);
-  scene.add(new THREE.AmbientLight(0xbcd8ff, 0.9));
+  const sky = new Sky();
+  sky.addTo(scene);
 
   const terrain = generateTerrain(1337);
   const terrainMesh = buildTerrainMesh(terrain);
@@ -86,6 +83,8 @@ async function boot() {
       cam.update(dt, input.actions.look, player.position, fovBoost);
       staminaWheel.update(player.stamina);
       windStreaks.update(dt, player.state === 'gliding', player.position, player.worldVelocity);
+      sky.update(dt, scene, camera.position, player.position);
+      if (input.heldKeys.has('KeyT')) sky.time01 = (sky.time01 + dt * 0.02) % 1;
     },
     (_alpha, frameDt) => {
       avatar.position.copy(player.position);
@@ -100,7 +99,7 @@ async function boot() {
   loop.start();
 
   (window as unknown as Record<string, unknown>).__debug = {
-    player, input, cam, terrain, physics, RAPIER, renderer, scene, camera, avatarModel, avatar,
+    player, input, cam, terrain, physics, RAPIER, renderer, scene, camera, avatarModel, avatar, sky,
   };
 
   document.getElementById('loading')!.classList.add('done');
