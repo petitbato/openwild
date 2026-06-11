@@ -50,7 +50,10 @@ export class Player {
     this.controller = physics.world.createCharacterController(0.05);
     this.controller.enableSnapToGround(0.4);
     this.controller.setMaxSlopeClimbAngle((50 * Math.PI) / 180);
-    this.controller.enableAutostep(0.45, 0.25, true);
+    // Autostep must not out-climb walking: steps are cheesable on a slope when
+    // minWidth * tan(slope) < maxHeight. 0.35/0.3 caps that at ~49°, just under
+    // the 50° max walk slope — so steep faces (e.g. the cliff) force climbing.
+    this.controller.enableAutostep(0.35, 0.3, true);
     this.position.copy(spawn);
     this.lastGroundedPos.copy(spawn);
   }
@@ -253,6 +256,10 @@ export class Player {
     overOrigin.y += 1.7;
     const down = this.physics.raycast(overOrigin, { x: 0, y: -1, z: 0 }, 2.6, this.collider);
     if (!down) { this.exitClimb(); return true; } // wall ended with nothing on top
+    // On steep-but-not-vertical faces (60-70° terrain cliffs) the down-cast hits
+    // the continuing slope itself — that is not a ledge. Only vault onto ground
+    // we could actually stand on; otherwise keep climbing.
+    if (down.normal.y < 0.7) return false;
 
     const standY = down.point.y + Player.HALF_HEIGHT + Player.RADIUS + 0.05;
     this.body.setNextKinematicTranslation({ x: overOrigin.x, y: standY, z: overOrigin.z });
