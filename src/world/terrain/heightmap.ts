@@ -14,6 +14,34 @@ function hash2(ix: number, iz: number, seed: number): number {
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
 
+function smoothstep(a: number, b: number, x: number): number {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return smooth(t);
+}
+
+/** Cliff sector parameters. theta is the sector's central angle (radians). */
+export const CLIFF = {
+  theta: -2.2,      // southwest sector — far from tower (~0.15) and ruins (~0 / ~2.15)
+  halfAngle: 0.38,
+  r0: 286,          // plateau edge (full height inside r0); pushed outward so base terrain stays low
+  r1: 295,          // foot of the wall (zero boost outside r1) → 16m over 9m ≈ 60.6°
+  height: 16,
+};
+
+/** Additive height term producing a steep climbable wall with a plateau behind it. */
+export function cliffBoost(x: number, z: number): number {
+  const r = Math.hypot(x, z);
+  if (r < 40 || r > 320) return 0;
+  let dTheta = Math.atan2(z, x) - CLIFF.theta;
+  dTheta = Math.atan2(Math.sin(dTheta), Math.cos(dTheta)); // wrap to [-π, π]
+  const ang = 1 - smoothstep(CLIFF.halfAngle * 0.55, CLIFF.halfAngle, Math.abs(dTheta));
+  if (ang <= 0) return 0;
+  const radial = 1 - smoothstep(CLIFF.r0, CLIFF.r1, r);
+  // fade plateau in gently from island interior so it blends and doesn't displace the tower
+  const inner = smoothstep(235, 276, r);
+  return CLIFF.height * ang * radial * inner;
+}
+
 function valueNoise(x: number, z: number, seed: number): number {
   const ix = Math.floor(x), iz = Math.floor(z);
   const fx = x - ix, fz = z - iz;
@@ -40,7 +68,7 @@ function sampleHeight(x: number, z: number, seed: number, size: number): number 
   const island = Math.max(0, Math.pow(1 - Math.pow(d / 0.707, 1.5), 3));  // strong edge cutoff
   const base = fbm(nx * 4 + 10, nz * 4 + 10, seed);         // rolling hills 0..1
   const mountain = Math.pow(fbm(nx * 2.5 + 50, nz * 2.5 + 50, seed + 701), 2.5);
-  return (base * 38 + mountain * 150) * island - 6;         // -6 sinks all edges below sea
+  return (base * 38 + mountain * 150) * island - 6 + cliffBoost(x, z);  // -6 sinks all edges below sea
 }
 
 export function generateTerrain(seed = 1337, size = 1024, resolution = 257): TerrainData {
