@@ -150,7 +150,11 @@ export class Player {
       if ((this.state === 'airborne' && this.velocityY <= 0) || this.state === 'gliding') this.state = 'grounded';
       if (this.state === 'grounded') {
         if (this.velocityY < -2) this.velocityY = -2;
-        this.lastGroundedPos.set(t.x, t.y, t.z);
+        // Only anchor the respawn point on land above the waterline, so
+        // drowning never respawns you back into the sea (respawn loop).
+        if (t.y - (Player.HALF_HEIGHT + Player.RADIUS) > 0.2) {
+          this.lastGroundedPos.set(t.x, t.y, t.z);
+        }
       }
     } else if (this.state === 'grounded') {
       this.state = 'airborne';
