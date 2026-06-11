@@ -16,4 +16,10 @@ describe('pickArchetype', () => {
   it('mid altitude can still yield conifers (variety)', () => {
     expect(pickArchetype(10, rngAt(0.95))).toBe('conifer');
   });
+  it('h=3 boundary belongs to the mid band, not the beach band', () => {
+    expect(pickArchetype(3, rngAt(0.5))).toBe('broadleaf');
+  });
+  it('h=22 boundary belongs to the high band', () => {
+    expect(pickArchetype(22, rngAt(0.5))).toBe('conifer');
+  });
 });

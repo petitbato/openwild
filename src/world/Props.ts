@@ -228,9 +228,8 @@ export function scatterProps(scene: THREE.Scene, physics: Physics, terrain: Terr
     if (h < 3 || h > 45 || terrain.normalAt(x, z).y < 0.8) continue;
 
     const scale = 0.7 + s * 0.7;
+    // h >= 3 here, so pickArchetype never returns 'palm' (palms spawn in the beach loop below)
     const arch = pickArchetype(h, () => archRoll);
-    // Skip palms in main loop (they belong in beach band h 0.5–3)
-    if (arch === 'palm') continue;
 
     placeTree(x, z, h, arch, scale, rotY * Math.PI * 2,
       (tiltX - 0.5) * 0.14, (tiltZ - 0.5) * 0.14,
